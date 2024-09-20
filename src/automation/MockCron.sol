@@ -94,10 +94,10 @@ library CronInternal {
      * from the current block timestamp. This is gas-intensive and therefore should
      * only be called off-chain.
      * @param spec the spec to evaluate
-     * @return the next tick
+     * @return _nextTick the next tick
      * @dev this is the internal version of the library. There is also an external version.
      */
-    function nextTick(Spec memory spec) internal view returns (uint256) {
+    function nextTick(Spec memory spec) internal view returns (uint256 _nextTick) {
         uint16 year = DateTime.getYear(block.timestamp);
         uint8 month = DateTime.getMonth(block.timestamp);
         uint8 day = DateTime.getDay(block.timestamp);
@@ -151,9 +151,9 @@ library CronInternal {
      * from the current block timestamp. This is gas-intensive and therefore should
      * only be called off-chain.
      * @param spec the spec to evaluate
-     * @return the next tick
+     * @return _lastTick the last tick
      */
-    function lastTick(Spec memory spec) internal view returns (uint256) {
+    function lastTick(Spec memory spec) internal view returns (uint256 _lastTick) {
         uint16 year = DateTime.getYear(block.timestamp);
         uint8 month = DateTime.getMonth(block.timestamp);
         uint8 day = DateTime.getDay(block.timestamp);

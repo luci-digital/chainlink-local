@@ -30,14 +30,28 @@ contract AutomationLocalSimulator is Test {
         Spec spec;
     }
 
+    struct MockCustomLogicUpkeep {
+        address target;
+        uint256 performGas;
+        bytes checkData;
+    }
+
     bytes4 internal constant PERFORM_SELECTOR = AutomationCompatibleInterface.performUpkeep.selector;
+    uint256 internal constant DEFAULT_GAS_LIMIT = 500_000;
 
     MockAutomationForwarder internal immutable i_forwarder;
 
     uint32 internal s_nonce; // Nonce for each upkeep created
     EnumerableSet.UintSet internal s_timeBasedUpkeepIds;
+    EnumerableSet.UintSet internal s_customLogicUpkeepIds;
 
     mapping(uint256 => MockTimeBasedUpkeep) internal s_timeBasedUpkeeps;
+    mapping(uint256 => MockCustomLogicUpkeep) internal s_customLogicUpkeeps;
+
+    error AutomationSimulator_ChekUpkeepFailed(address target, bytes checkData);
+    error AutomationSimulator_PerformUpkeepFailed(address target, bytes performData);
+
+    event AutomationSimulator_PerformUpkeep(uint256 indexed id, uint256 gasUsed);
 
     constructor() {
         i_forwarder = new MockAutomationForwarder();
@@ -66,51 +80,97 @@ contract AutomationLocalSimulator is Test {
         });
     }
 
-    //     function simulateTx(address targetContract, bytes memory abiEncodedFuncWithArguments, address msgSender)
-    //     external
-    //     returns (bytes memory)
-    // {
-    //     _preTxHook();
+    function registerNewMockCustomLogicUpkeep(address target, uint256 performGas, bytes calldata checkData)
+        external
+        returns (uint256 id)
+    {
+        s_nonce++;
+        id = _createID(TriggerType.CONDITION);
+        s_customLogicUpkeepIds.add(id);
 
-    //     vm.startPrank(msgSender);
-    //     (bool ok, bytes memory returnData) = targetContract.call(abiEncodedFuncWithArguments);
-    //     vm.stopPrank();
-    //     require(ok);
+        s_customLogicUpkeeps[id] = MockCustomLogicUpkeep({target: target, performGas: performGas, checkData: checkData});
+    }
 
-    //     _postTxHook();
+    function simulateTx(address targetContract, bytes memory abiEncodedFuncWithArguments, address msgSender)
+        external
+        returns (bytes memory)
+    {
+        _preTxHook();
 
-    //     return returnData;
-    // }
+        vm.startPrank(msgSender);
+        (bool ok, bytes memory returnData) = targetContract.call(abiEncodedFuncWithArguments);
+        vm.stopPrank();
+        require(ok);
+
+        _postTxHook();
+
+        return returnData;
+    }
+
+    function _checkCustomLogicUpkeeps() internal {
+        uint256 length = s_customLogicUpkeepIds.length();
+        for (uint256 i = 0; i < length; ++i) {
+            uint256 id = s_customLogicUpkeepIds.at(i);
+            MockCustomLogicUpkeep memory currentUpkeep = s_customLogicUpkeeps[id];
+
+            // eth_call
+            (bool ok, bytes memory returnData) = currentUpkeep.target.staticcall{gas: DEFAULT_GAS_LIMIT}(
+                abi.encodeWithSelector(AutomationCompatibleInterface.checkUpkeep.selector, currentUpkeep.checkData)
+            );
+            if (!ok) {
+                revert AutomationSimulator_ChekUpkeepFailed(currentUpkeep.target, currentUpkeep.checkData);
+            }
+
+            (bool upkeepNeeded, bytes memory performData) = abi.decode(returnData, (bool, bytes));
+            if (upkeepNeeded) {
+                (bool success, uint256 gasUsed) =
+                    _performUpkeep(currentUpkeep.target, PERFORM_SELECTOR, performData, currentUpkeep.performGas);
+                if (!success) {
+                    revert AutomationSimulator_PerformUpkeepFailed(currentUpkeep.target, performData);
+                }
+                emit AutomationSimulator_PerformUpkeep(id, gasUsed);
+            }
+        }
+    }
 
     function increaseBlockTimestamp(uint256 numberOfSecondsToSkipForward) external {
         skip(numberOfSecondsToSkipForward);
 
         uint256 length = s_timeBasedUpkeepIds.length();
         for (uint256 i = 0; i < length; ++i) {
-            MockTimeBasedUpkeep memory currentUpkeep = s_timeBasedUpkeeps[s_timeBasedUpkeepIds.at(i)];
+            uint256 id = s_timeBasedUpkeepIds.at(i);
+            MockTimeBasedUpkeep memory currentUpkeep = s_timeBasedUpkeeps[id];
             uint256 lastTick = CronExternal.lastTick(currentUpkeep.spec);
 
             if (lastTick > currentUpkeep.lastRun) {
                 uint256 nextTick = CronExternal.nextTick(currentUpkeep.spec);
                 uint256 interval = nextTick - lastTick;
                 if (interval == 0) {
-                    (bool success,) = _performUpkeep(
+                    (bool success, uint256 gasUsed) = _performUpkeep(
                         currentUpkeep.target,
                         currentUpkeep.performSelector,
                         currentUpkeep.performData,
                         currentUpkeep.performGas
                     );
-                    require(success, "AutomationLocalSimulator: upkeep failed");
+                    if (!success) {
+                        revert AutomationSimulator_PerformUpkeepFailed(currentUpkeep.target, currentUpkeep.performData);
+                    }
+                    emit AutomationSimulator_PerformUpkeep(id, gasUsed);
                 } else {
                     uint256 numberOfTicksMissed = block.timestamp / interval;
                     for (uint256 j = 0; j < numberOfTicksMissed; ++j) {
-                        (bool success,) = _performUpkeep(
+                        (bool success, uint256 gasUsed) = _performUpkeep(
                             currentUpkeep.target,
                             currentUpkeep.performSelector,
                             currentUpkeep.performData,
                             currentUpkeep.performGas
                         );
-                        require(success, "AutomationLocalSimulator: upkeep failed");
+                        if (!success) {
+                            revert AutomationSimulator_PerformUpkeepFailed(
+                                currentUpkeep.target, currentUpkeep.performData
+                            );
+                        }
+                        emit AutomationSimulator_PerformUpkeep(id, gasUsed);
                     }
                 }
 
@@ -132,6 +192,42 @@ contract AutomationLocalSimulator is Test {
     {
         performData = abi.encodeWithSelector(performSelector, performData);
         return i_forwarder.forward(target, performGas, performData);
+    }
+
+    function _preTxHook() internal {
+        // ================================================================
+        // │                  Time-based trigger logic                    │
+        // ================================================================
+        uint256 length = s_timeBasedUpkeepIds.length();
+        for (uint256 i = 0; i < length; ++i) {
+            uint256 id = s_timeBasedUpkeepIds.at(i);
+            MockTimeBasedUpkeep memory currentUpkeep = s_timeBasedUpkeeps[id];
+            uint256 lastTick = CronExternal.lastTick(currentUpkeep.spec);
+
+            if (lastTick > currentUpkeep.lastRun) {
+                uint256 nextTick = CronExternal.nextTick(currentUpkeep.spec);
+                uint256 interval = nextTick - lastTick;
+                if (interval == 0) {
+                    (bool success, uint256 gasUsed) = _performUpkeep(
+                        currentUpkeep.target,
+                        currentUpkeep.performSelector,
+                        currentUpkeep.performData,
+                        currentUpkeep.performGas
+                    );
+                    if (!success) {
+                        revert AutomationSimulator_PerformUpkeepFailed(currentUpkeep.target, currentUpkeep.performData);
+                    }
+                    emit AutomationSimulator_PerformUpkeep(id, gasUsed);
+                }
+            }
+        }
+    }
+
+    function _postTxHook() internal {
+        // ================================================================
+        // │                   Condition trigger logic                    │
+        // ================================================================
+        _checkCustomLogicUpkeeps();
     }
 
     /**

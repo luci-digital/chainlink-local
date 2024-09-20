@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
-import {AutomationLocalSimulator} from "../../../src/automation/AutomationLocalSimulator.sol";
+import {AutomationLocalSimulator} from "@chainlink/local/src/automation/AutomationLocalSimulator.sol";
 
 import {Counter} from "../../../src/test/automation/Counter.sol";
 
