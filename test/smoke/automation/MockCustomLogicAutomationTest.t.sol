@@ -31,9 +31,10 @@ contract MockCustomLogicAutomationTest is Test {
         exampleConsumer = new ExampleConsumer(address(mockExchangeRateLimiter));
 
         uint256 performGas = 100_000;
+        bytes memory checkData = abi.encode(address(mockExchange));
 
         automationLocalSimulator.registerNewMockCustomLogicUpkeep(
-            address(mockExchangeRateLimiter), performGas, abi.encode(address(mockExchange))
+            address(mockExchangeRateLimiter), performGas, checkData
         );
         mockExchangeRateLimiter.setAutomationForwarder(forwarder);
         vm.stopPrank();
