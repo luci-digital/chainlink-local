@@ -40,6 +40,21 @@ contract MockCustomLogicAutomationTest is Test {
         vm.stopPrank();
     }
 
+    function test_abiEncodeCall() external {
+        uint256 prevRate = exampleConsumer.getLatestExchangeRate();
+
+        uint256 newRate = 1 ether;
+
+        // Need Solidity version 8.11 or higher - Recommended to use
+        automationLocalSimulator.simulateTx(
+            address(mockExchange), abi.encodeCall(mockExchange.setExchangeRate, (newRate)), alice
+        );
+
+        uint256 latestRate = exampleConsumer.getLatestExchangeRate();
+        assertNotEq(prevRate, latestRate);
+        assertEq(latestRate, newRate);
+    }
+
     function test_abiEncodeWithSelector() external {
         uint256 prevRate = exampleConsumer.getLatestExchangeRate();
 

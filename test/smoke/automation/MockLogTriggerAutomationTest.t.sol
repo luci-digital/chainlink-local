@@ -55,9 +55,7 @@ contract MockLogTriggerAutomationTest is Test {
     function test_countWithLog() external {
         uint256 prevCount = countWithLog.getCurrentCount();
 
-        automationLocalSimulator.simulateTx(
-            address(countWithLog), abi.encodeWithSelector(countWithLog.emitCountLog.selector), alice
-        );
+        automationLocalSimulator.simulateTx(address(countWithLog), abi.encodeCall(countWithLog.emitCountLog, ()), alice);
 
         uint256 newCount = countWithLog.getCurrentCount();
         address counter = countWithLog.getCounter(newCount);
