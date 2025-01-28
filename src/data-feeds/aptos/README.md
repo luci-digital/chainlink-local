@@ -88,8 +88,8 @@ aptos move download --account 0xf22a4370fa80c7f3cd6815fe976d4b00e7b4c228d7c4b4f3
 
 #### Step 6: Create a consumer smart contract
 
-Create a new file named `MyOracleContractTest.move` in the `src` directory with
-the following content:
+Create a new file named `MyOracleContractTest.move` in the `sources` directory
+with the following content:
 
 ```rust
 module sender::MyOracleContractTest {
