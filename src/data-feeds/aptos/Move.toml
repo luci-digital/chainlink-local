@@ -1,6 +1,6 @@
 [package]
-name = "chainlink_local"
-version = "1.0.0"
+name = "ChainlinkLocal"
+version = "0.0.1"
 
 [addresses]
 move_stdlib = "0x1"
