@@ -293,7 +293,7 @@ module chainlink_local::mock_data_feeds_registry {
     }
 
     public fun get_reports(
-        feed_ids: vector<vector<u8>>
+        _authority: &signer, feed_ids: vector<vector<u8>>
     ): vector<Report> acquires MockRegistry {
         let registry = borrow_global<MockRegistry>(get_state_addr());
         
@@ -443,7 +443,7 @@ module chainlink_local::mock_data_feeds_registry {
         assert!(get_benchmark_value(eth_usd_benchmark) == 0, ETEST_WRONG_BENCHMARK);
         assert!(get_benchmark_timestamp(eth_usd_benchmark) == 0, ETEST_WRONG_TIMESTAMP);
 
-        let reports = get_reports(feed_ids);
+        let reports = get_reports(sender, feed_ids);
         assert!(vector::length(&reports) == 2, ETEST_WRONG_COUNT);
 
         let btc_usd_report = vector::borrow(&reports, 0);

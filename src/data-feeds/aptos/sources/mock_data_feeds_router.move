@@ -52,6 +52,6 @@ module chainlink_local::mock_data_feeds_router {
     ): vector<Report> acquires MockRouter {
         let _router = borrow_global<MockRouter>(get_state_addr());
 
-        mock_data_feeds_registry::get_reports(feed_ids)
+        mock_data_feeds_registry::get_reports(_authority, feed_ids)
     }
 }

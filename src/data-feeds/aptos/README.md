@@ -9,12 +9,12 @@ Chainlink Local Data Feeds on the Aptos testnet:
 The `ChainlinkLocal` package is deployed on the Aptos testnet at the following
 address:
 
-- `0x4a0a7bee77ccdf9cf42336137ac4fdee97e77a38a2fa07fed777ef9dcec302ed`
+- `0xf22a4370fa80c7f3cd6815fe976d4b00e7b4c228d7c4b4f310b330b08eca5dea`
 
 To download it, run the following command:
 
 ```
-aptos move download --account 0x4a0a7bee77ccdf9cf42336137ac4fdee97e77a38a2fa07fed777ef9dcec302ed --package ChainlinkLocal
+aptos move download --account 0xf22a4370fa80c7f3cd6815fe976d4b00e7b4c228d7c4b4f310b330b08eca5dea --package ChainlinkLocal
 ```
 
 ### Tutorial
@@ -65,7 +65,7 @@ authors = []
 
 [addresses]
 sender = "<YOUR_ACCOUNT_ADDRESS>"
-chainlink_local = "0x4a0a7bee77ccdf9cf42336137ac4fdee97e77a38a2fa07fed777ef9dcec302ed"
+chainlink_local = "0xf22a4370fa80c7f3cd6815fe976d4b00e7b4c228d7c4b4f310b330b08eca5dea"
 move_stdlib = "0x1"
 aptos_std = "0x1"
 
@@ -83,7 +83,7 @@ Run the following command in your terminal to download the ChainlinkLocal
 package:
 
 ```
-aptos move download --account 0x4a0a7bee77ccdf9cf42336137ac4fdee97e77a38a2fa07fed777ef9dcec302ed --package ChainlinkLocal
+aptos move download --account 0xf22a4370fa80c7f3cd6815fe976d4b00e7b4c228d7c4b4f310b330b08eca5dea --package ChainlinkLocal
 ```
 
 #### Step 6: Create a consumer smart contract
